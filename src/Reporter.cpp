@@ -16,8 +16,8 @@ void Reporter::candidate(int gen, const Compiler::Metrics& candidate, const Comp
 }
 
 void Reporter::newBest(int gen, const Compiler::Metrics& best) const {
-    std::cout << "\rNew best! Gen " << gen << ": "
+    std::cout << "\nNew best! Gen " << gen << ": "
               << "time=" << best.time_us << " µs, mem=" << best.memory_kb
               << " KB, fitness=" << best.fitness() << "   "
-              << std::flush;
+              << "\n";
 }

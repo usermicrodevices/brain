@@ -2,10 +2,37 @@
 
 Serializer* Serializer::instance = nullptr;
 
+// Helper: split combined source into header and cpp parts.
+static std::pair<std::string, std::string> splitCombinedSource(const std::string& combined) {
+    size_t sep = combined.find("\n\n");
+    if (sep == std::string::npos) return {combined, ""};
+    std::string header = combined.substr(0, sep);
+    std::string cpp = combined.substr(sep + 2);
+    return {header, cpp};
+}
+
+// Helper: write a file with a comment header
+static void writeFile(const std::string& path, const std::string& content, int generation, const Compiler::Metrics& best) {
+    std::ofstream out(path);
+    if (out) {
+        out << "// Best program found at generation " << generation << "\n";
+        out << "// Time: " << best.time_us << " µs, Memory: " << best.memory_kb << " KB\n";
+        out << content;
+        out.close();
+        std::cout << "Updated " << path << "\n";
+    } else {
+        std::cerr << "Error writing " << path << "\n";
+    }
+}
+
 Serializer::Serializer(const std::string& initialSource, int generation, const Compiler::Metrics& initialBest)
     : bestSource(initialSource), best(initialBest), bestGen(generation) {
     instance = this;
     installSignalHandler();
+    // Initially write the best source to original files (even if not improved yet)
+    auto [header, cpp] = splitCombinedSource(initialSource);
+    writeFile("include/Core.hpp", header, generation, initialBest);
+    writeFile("src/Core.cpp", cpp, generation, initialBest);
 }
 
 Serializer::~Serializer() {
@@ -16,20 +43,11 @@ void Serializer::updateBest(const std::string& source, const Compiler::Metrics& 
     bestSource = source;
     best = metrics;
     bestGen = generation;
-}
 
-// Helper: split combined source into header and cpp parts.
-// The combined source is header + "\n\n" + cpp (as built in Core::readOwnSource).
-static std::pair<std::string, std::string> splitCombinedSource(const std::string& combined) {
-    // Find the first blank line that separates header and cpp (two consecutive newlines)
-    size_t sep = combined.find("\n\n");
-    if (sep == std::string::npos) {
-        // fallback: assume it's all cpp? not likely
-        return {combined, ""};
-    }
-    std::string header = combined.substr(0, sep);
-    std::string cpp = combined.substr(sep + 2); // skip the two newlines
-    return {header, cpp};
+    // Write the best core to the original source files immediately
+    auto [header, cpp] = splitCombinedSource(source);
+    writeFile("include/Core.hpp", header, generation, metrics);
+    writeFile("src/Core.cpp", cpp, generation, metrics);
 }
 
 void Serializer::saveBest() const {
@@ -38,45 +56,15 @@ void Serializer::saveBest() const {
         return;
     }
 
-    // Create the top-level "best" directory if it doesn't exist
+    // Optional: create a backup in best/ (not committed)
     mkdir("best", 0755);
+    mkdir("best/include", 0755);
+    mkdir("best/src", 0755);
 
-    // Copy the entire include/ and src/ directories (excluding best/ itself)
-    // Use system commands for simplicity; they are standard on Unix.
-    // We ignore errors because directories may already exist.
-    system("cp -r include best/ 2>/dev/null");
-    system("cp -r src best/ 2>/dev/null");
+    auto [header, cpp] = splitCombinedSource(bestSource);
+    writeFile("best/include/Core.hpp", header, bestGen, best);
+    writeFile("best/src/Core.cpp", cpp, bestGen, best);
 
-    // Now split the best source into header and cpp
-    auto [headerBest, cppBest] = splitCombinedSource(bestSource);
-
-    // Write the best header
-    std::string headerFile = "best/include/Core.hpp";
-    std::ofstream outHdr(headerFile);
-    if (outHdr) {
-        outHdr << "// Best program found at generation " << bestGen << "\n";
-        outHdr << "// Time: " << best.time_us << " µs, Memory: " << best.memory_kb << " KB\n";
-        outHdr << headerBest;
-        outHdr.close();
-        std::cout << "Best header saved to " << headerFile << "\n";
-    } else {
-        std::cerr << "Error writing " << headerFile << "\n";
-    }
-
-    // Write the best cpp
-    std::string cppFile = "best/src/Core.cpp";
-    std::ofstream outCpp(cppFile);
-    if (outCpp) {
-        outCpp << "// Best program found at generation " << bestGen << "\n";
-        outCpp << "// Time: " << best.time_us << " µs, Memory: " << best.memory_kb << " KB\n";
-        outCpp << cppBest;
-        outCpp.close();
-        std::cout << "Best source saved to " << cppFile << "\n";
-    } else {
-        std::cerr << "Error writing " << cppFile << "\n";
-    }
-
-    // Save results file
     std::ofstream outRes("best_results.txt");
     if (outRes) {
         outRes << "Generation: " << bestGen << "\n";
