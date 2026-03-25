@@ -2,7 +2,7 @@
 
 Benchmark::Benchmark(const Compiler& compiler) : compiler_(compiler) {}
 
-Compiler::Metrics Benchmark::run(const std::string& source) const {
+Metrics Benchmark::run(const std::string& source) const {
     std::string exeName = "bench_candidate";
     if (compiler_.compile(source, exeName)) {
         return compiler_.runAndMeasure(exeName, "--benchmark");

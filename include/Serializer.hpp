@@ -12,17 +12,18 @@
 
 class Serializer {
 public:
-    Serializer(const std::string& initialSource, int generation, const Compiler::Metrics& initialBest);
+    Serializer(const Metrics& initialBest, int generation=0, const std::string& tmpSourcePath="/dev/shm");
     ~Serializer();
 
-    void updateBest(const std::string& source, const Compiler::Metrics& best, int generation);
+    void updateBest(const Metrics& metrics, int generation=0, const std::string& header="", const std::string& source="");
     void saveBest() const;
 
 private:
-    std::string bestSource;
-    Compiler::Metrics best;
-    int bestGen;
-    static Serializer* instance;
+    std::string tmpRoot_;
+    Metrics best_;
+    int bestGen_;
+    static Serializer* instance_;
+
     static void signal_handler(int);
     static void installSignalHandler();
 };

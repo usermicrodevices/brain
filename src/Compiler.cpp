@@ -2,12 +2,6 @@
 
 pid_t g_child_pid = -1;
 
-static std::string getTempDir() {
-    struct stat st;
-    if (stat("/dev/shm", &st) == 0 && S_ISDIR(st.st_mode)) return "/dev/shm/";
-    return "./";
-}
-
 bool Compiler::compile(const std::string& source, const std::string& exeName) const {
     if (source.empty()) return false;
     std::string tmpDir = getTempDir();
@@ -63,7 +57,7 @@ bool Compiler::compile(const std::string& source, const std::string& exeName) co
     return success;
 }
 
-Compiler::Metrics Compiler::runAndMeasure(const std::string& exeName, const std::string& arg) const {
+Metrics Compiler::runAndMeasure(const std::string& exeName, const std::string& arg) const {
     Metrics m = {0, 0, false};
     std::string tmpDir = getTempDir();
     std::string exeFile = tmpDir + exeName;
