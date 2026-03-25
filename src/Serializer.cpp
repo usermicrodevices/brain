@@ -8,8 +8,8 @@ Serializer::Serializer(const Metrics& initialBest, int generation, const std::st
     installSignalHandler();
     // Initially write the best source to the temporary directory
     //auto [header, source] = readBestSource(tmpRoot_);
-    //writeFile(tmpRoot_ + "/include/Core.hpp", header);
-    //writeFile(tmpRoot_ + "/src/Core.cpp", source);
+    //writeFile(tmpRoot_ + "include/Core.hpp", header);
+    //writeFile(tmpRoot_ + "src/Core.cpp", source);
 }
 
 Serializer::~Serializer() {
@@ -19,8 +19,8 @@ Serializer::~Serializer() {
 void Serializer::updateBest(const Metrics& metrics, int generation, const std::string& header, const std::string& source) {
     best_ = metrics;
     bestGen_ = generation;
-    writeFile(tmpRoot_ + "/include/Core.hpp", header);
-    writeFile(tmpRoot_ + "/src/Core.cpp", source);
+    writeFile(tmpRoot_ + "include/Core.hpp", header);
+    writeFile(tmpRoot_ + "src/Core.cpp", source);
 }
 
 void Serializer::saveBest() const {
@@ -29,14 +29,9 @@ void Serializer::saveBest() const {
         return;
     }
 
-    // Create a backup in best/ (optional)
-    mkdir("best", 0755);
-    mkdir("best/include", 0755);
-    mkdir("best/src", 0755);
-
     auto [header, source] = readBestSource(tmpRoot_); // read from temporary
-    writeFile("best/include/Core.hpp", header);
-    writeFile("best/src/Core.cpp", source);
+    writeFile("include/Core.hpp", header);
+    writeFile("src/Core.cpp", source);
 
     std::ofstream outRes("best_results.txt");
     if (outRes) {
@@ -55,8 +50,7 @@ void Serializer::signal_handler(int sig) {
         if (instance_) {
             std::cout << "\n\nExiting... Saving best brain...\n";
             // Copy from temporary to original files (done in main after loop)
-            // We'll let main do the copy to avoid double write.
-            // instance_->saveBest(); // this would write backup, but not original
+            // instance_->saveBest(); // this would rewrite original
         }
         exit(0);
     }

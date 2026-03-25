@@ -54,6 +54,7 @@ Metrics Compiler::runAndMeasure(const std::string& root, const std::string& binN
     std::string outputFile = root + binName + ".out";
 
     std::string cmd = binFile + " " + arg + " > " + outputFile;
+    std::cout << cmd << "\n";
 
     pid_t pid = fork();
     if (pid == -1) return m;
