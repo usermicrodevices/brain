@@ -27,33 +27,47 @@ static void ensureGitignore() {
 }
 
 bool Git::commitAndPush(const std::string& branch, const std::string& message) {
-    if (!bestFolderExists()) return false; // no best folder, but we still commit original files
+    // We commit the original source files even if best folder is empty
     ensureGitignore();
 
     // Switch to branch (create if needed)
     std::string cmd = "git checkout " + branch + " 2>/dev/null || git checkout -b " + branch;
-    if (system(cmd.c_str()) != 0) return false;
+    if (system(cmd.c_str()) != 0) {
+        std::cerr << "[Git] Failed to switch to branch " << branch << "\n";
+        return false;
+    }
 
-    // Add all tracked files (including include/ and src/)
-    cmd = "git add include src";
-    if (system(cmd.c_str()) != 0) return false;
-    // Also add any other important files (like run.sh, brain.cpp) – optional
-    // But we avoid adding best/ because it's ignored.
+    // Force-add the entire include/ and src/ directories (they might be ignored)
+    cmd = "git add -f include src";
+    if (system(cmd.c_str()) != 0) {
+        std::cerr << "[Git] Failed to add include/ and src/\n";
+        return false;
+    }
 
     cmd = "git commit -m \"" + message + "\"";
-    if (system(cmd.c_str()) != 0) return false;
+    if (system(cmd.c_str()) != 0) {
+        std::cerr << "[Git] Commit failed (maybe no changes)\n";
+        // It's okay if there are no changes, we still continue
+    }
 
     cmd = "git push origin " + branch;
-    if (system(cmd.c_str()) != 0) return false;
+    if (system(cmd.c_str()) != 0) {
+        std::cerr << "[Git] Push failed\n";
+        return false;
+    }
 
     return true;
 }
 
 bool Git::createPullRequest(const std::string& base, const std::string& head) {
-    if (!bestFolderExists()) return false;
+    // We don't require best folder for PR creation
     ensureGitignore();
     std::string cmd = "gh pr create --base " + base + " --head " + head
-                      + " --title \"Daily evolution update\""
-                      + " --body \"Automated commit from brain evolution\"";
-    return (system(cmd.c_str()) == 0);
+    + " --title \"Daily evolution update\""
+    + " --body \"Automated commit from brain evolution\"";
+    int ret = system(cmd.c_str());
+    if (ret != 0) {
+        std::cerr << "[Git] Failed to create pull request (maybe already exists)\n";
+    }
+    return (ret == 0);
 }
