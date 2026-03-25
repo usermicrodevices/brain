@@ -13,7 +13,7 @@
 
 #include "Tools.hpp"
 
-extern pid_t g_child_pid;   // for signal handler to kill the child
+extern pid_t g_child_pid;
 
 struct Metrics {
     double time_us;
@@ -24,6 +24,6 @@ struct Metrics {
 
 class Compiler {
 public:
-    bool compile(const std::string& source, const std::string& exeName) const;
-    Metrics runAndMeasure(const std::string& exeName, const std::string& arg = "") const;
+    bool compile(const std::string& root, const std::string& binName) const;
+    Metrics runAndMeasure(const std::string& root, const std::string& binName, const std::string& arg = "") const;
 };

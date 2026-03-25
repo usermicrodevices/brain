@@ -8,20 +8,21 @@
 #include <string>
 #include <sys/stat.h>
 
+#include "Tools.hpp"
 #include "Compiler.hpp"
 
 class Serializer {
 public:
-    Serializer(const Metrics& initialBest, int generation=0, const std::string& tmpSourcePath="/dev/shm");
+    Serializer(const Metrics& initialBest, int generation = 0, const std::string& tmpRoot = "");
     ~Serializer();
 
-    void updateBest(const Metrics& metrics, int generation=0, const std::string& header="", const std::string& source="");
+    void updateBest(const Metrics& metrics, int generation, const std::string& header, const std::string& source);
     void saveBest() const;
 
 private:
-    std::string tmpRoot_;
     Metrics best_;
     int bestGen_;
+    std::string tmpRoot_;
     static Serializer* instance_;
 
     static void signal_handler(int);

@@ -1,11 +1,12 @@
 #include "Benchmark.hpp"
 
-Benchmark::Benchmark(const Compiler& compiler) : compiler_(compiler) {}
+Benchmark::Benchmark(const Compiler& compiler, const std::string& tmpRoot)
+    : compiler_(compiler), tmpRoot_(tmpRoot) {}
 
-Metrics Benchmark::run(const std::string& source) const {
-    std::string exeName = "bench_candidate";
-    if (compiler_.compile(source, exeName)) {
-        return compiler_.runAndMeasure(exeName, "--benchmark");
+Metrics Benchmark::run() const {
+    std::string binName = "brain_bench";
+    if (compileProgram(binName, tmpRoot_)) {
+        return compiler_.runAndMeasure(tmpRoot_, binName, "--benchmark");
     }
     return {0, 0, false};
 }

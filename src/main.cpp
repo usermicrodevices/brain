@@ -39,23 +39,43 @@ int main() {
     std::cout << "Fitness = time(µs) * memory(KB) (lower is better).\n";
     std::cout << "Press Ctrl+C to save the best evolved brain.\n\n";
 
-    auto [ownHeader, ownSource] = readBestSource();
+    // Create a temporary working directory in /dev/shm
+    std::string tmpRoot = getTempDir() + "brain_work/";
+    mkdir(tmpRoot.c_str(), 0755);
+    // Create include and src subdirectories
+    mkdir((tmpRoot + "include").c_str(), 0755);
+    mkdir((tmpRoot + "src").c_str(), 0755);
+    // Copy only the include/ and src/ directories (headers and source files)
+    if(system(("cp -r include/* " + tmpRoot + "include/").c_str()) != 0)
+    {
+        std::cout << "Error copy 'include' to temp dir\n";
+        return 1;
+    }
+    if(system(("cp -r src/* " + tmpRoot + "src/").c_str()) != 0)
+    {
+        std::cout << "Error copy 'src' to temp dir\n";
+        return 1;
+    }
+
+    // Now all operations will use tmpRoot as the base
+    auto [ownHeader, ownSource] = readBestSource(tmpRoot);
 
     Compiler compiler;
-    Serializer serializer(Metrics{0,0,false});
+    Serializer serializer(Metrics{0,0,false}, 0, tmpRoot);
     Reporter reporter;
-    Benchmark benchmark(compiler);
+    Benchmark benchmark(compiler, tmpRoot);
 
     std::string bestSource = ownSource;
-    Metrics best = benchmark.run(bestSource);
+    Metrics best = benchmark.run();
     reporter.initialBest(best);
     serializer.updateBest(best, 0, ownHeader, bestSource);
 
+    // ATTENTION: not delete this comment lines with examples and info
     // Start the scheduler
-    //Scheduler scheduler; // runs default "0 0 * * *" every midnight
+    // Scheduler scheduler; // runs default "0 0 * * *" every midnight
     // for testing you can use run once
     // runs once after N minutes or edit as examples: "+5m", "+2h30m", "+90s"
-    //Scheduler scheduler("+1m");
+    // Scheduler scheduler("+1m");
 
     int generation = 0;
     while (!exit_requested) {
@@ -64,7 +84,7 @@ int main() {
         if (exit_requested) break;
 
         g_child_pid = 0;
-        Metrics m = benchmark.run(mutated);
+        Metrics m = benchmark.run();
         if (exit_requested) break;
 
         if (m.valid && m.fitness() < best.fitness()) {
@@ -76,10 +96,11 @@ int main() {
             reporter.candidate(generation, m, best);
         }
         ++generation;
-        // Small sleep to avoid busy loop
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    // On exit, copy the best core from temporary to original files
+    copyBestToOriginal(tmpRoot);
     serializer.saveBest();
 
     return 0;

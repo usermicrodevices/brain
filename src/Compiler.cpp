@@ -2,24 +2,17 @@
 
 pid_t g_child_pid = -1;
 
-bool Compiler::compile(const std::string& source, const std::string& exeName) const {
-    if (source.empty()) return false;
-    std::string tmpDir = getTempDir();
-    std::string srcFile = tmpDir + exeName + ".cpp";
-    std::string exeFile = tmpDir + exeName;
+bool Compiler::compile(const std::string& root, const std::string& binName) const {
+    if (root.empty()) return false;
+    std::string binFile = root + binName;
 
-    std::ofstream out(srcFile);
-    if (!out) return false;
-    out << source;
-    out.close();
-
-    setenv("TMPDIR", tmpDir.c_str(), 1);
-    std::string errFile = tmpDir + exeName + ".err";
-    std::string cmd = "g++ -pipe -std=c++20 -O2 -o " + exeFile + " " + srcFile + " 2> " + errFile;
+    setenv("TMPDIR", root.c_str(), 1);
+    std::string errFile = root + binName + ".err";
+    std::string cmd = "g++ -pipe -std=c++20 -O2 -I" + root + "/include " + root + "/src/*.cpp -o " + root + "/" + binFile + " 2> " + errFile;
 
     pid_t pid = fork();
     if (pid == -1) {
-        std::remove(srcFile.c_str());
+        std::remove(errFile.c_str());
         return false;
     }
     if (pid == 0) {
@@ -35,7 +28,6 @@ bool Compiler::compile(const std::string& source, const std::string& exeName) co
     g_child_pid = -1;
     if (ret == -1) {
         // waitpid interrupted by signal (Ctrl+C)
-        std::remove(srcFile.c_str());
         std::remove(errFile.c_str());
         return false;
     }
@@ -53,17 +45,15 @@ bool Compiler::compile(const std::string& source, const std::string& exeName) co
         }
         std::remove(errFile.c_str());
     }
-    std::remove(srcFile.c_str());
     return success;
 }
 
-Metrics Compiler::runAndMeasure(const std::string& exeName, const std::string& arg) const {
+Metrics Compiler::runAndMeasure(const std::string& root, const std::string& binName, const std::string& arg) const {
     Metrics m = {0, 0, false};
-    std::string tmpDir = getTempDir();
-    std::string exeFile = tmpDir + exeName;
-    std::string outputFile = tmpDir + exeName + ".out";
+    std::string binFile = root + binName;
+    std::string outputFile = root + binName + ".out";
 
-    std::string cmd = exeFile + " " + arg + " > " + outputFile;
+    std::string cmd = binFile + " " + arg + " > " + outputFile;
 
     pid_t pid = fork();
     if (pid == -1) return m;
@@ -95,9 +85,9 @@ Metrics Compiler::runAndMeasure(const std::string& exeName, const std::string& a
         }
         m.valid = true;
     } else {
-        std::cerr << "Execution failed for " << exeFile << std::endl;
+        std::cerr << "Execution failed for " << binFile << std::endl;
     }
     std::remove(outputFile.c_str());
-    std::remove(exeFile.c_str());
+    std::remove(binFile.c_str());
     return m;
 }
