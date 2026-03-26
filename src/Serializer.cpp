@@ -7,7 +7,7 @@ Serializer::Serializer(const Metrics& initialBest, int generation, const std::st
     instance_ = this;
     installSignalHandler();
     // Initially write the best source to the temporary directory
-    //auto [header, source] = readBestSource(tmpRoot_);
+    //auto [header, source] = readSources(tmpRoot_);
     //writeFile(tmpRoot_ + "include/Core.hpp", header);
     //writeFile(tmpRoot_ + "src/Core.cpp", source);
 }
@@ -29,7 +29,7 @@ void Serializer::saveBest() const {
         return;
     }
 
-    auto [header, source] = readBestSource(tmpRoot_); // read from temporary
+    auto [header, source] = readSources(tmpRoot_); // read from temporary
     writeFile("include/Core.hpp", header);
     writeFile("src/Core.cpp", source);
 

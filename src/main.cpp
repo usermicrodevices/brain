@@ -11,6 +11,7 @@
 #include "Reporter.hpp"
 #include "Benchmark.hpp"
 #include "Scheduler.hpp"
+#include "Core.hpp"
 
 volatile std::sig_atomic_t exit_requested = 0;
 extern pid_t g_child_pid;
@@ -24,7 +25,19 @@ void signal_handler(int sig) {
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+
+    // Check if we are being run as a benchmark child
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--benchmark") {
+            // Run the benchmark and exit – no recursion
+            Core core;
+            std::cout << core.randomExpression() << "\n";
+            std::cout << "am child, goodby\n";
+            return 0;
+        }
+    }
+
     struct sigaction sa;
     sa.sa_handler = signal_handler;
     sigemptyset(&sa.sa_mask);
@@ -39,8 +52,8 @@ int main() {
     std::cout << "Fitness = time(µs) * memory(KB) (lower is better).\n";
     std::cout << "Press Ctrl+C to save the best evolved brain.\n\n";
 
-    // Create a temporary working directory in /dev/shm
     std::string tmpRoot = getTempDir() + "brain_work/";
+    // Create a temporary working directory in /dev/shm
     mkdir(tmpRoot.c_str(), 0755);
     // Create include and src subdirectories
     mkdir((tmpRoot + "include").c_str(), 0755);
@@ -58,7 +71,7 @@ int main() {
     }
 
     // Now all operations will use tmpRoot as the base
-    auto [ownHeader, ownSource] = readBestSource(tmpRoot);
+    auto [ownHeader, ownSource] = readSources(tmpRoot);
 
     Compiler compiler;
     Serializer serializer(Metrics{0,0,false}, 0, tmpRoot);
