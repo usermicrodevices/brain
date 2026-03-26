@@ -15,13 +15,6 @@
 
 extern pid_t g_child_pid;
 
-struct Metrics {
-    double time_us;
-    long memory_kb;
-    bool valid;
-    double fitness() const { return time_us * memory_kb; }
-};
-
 class Compiler {
 public:
     bool compile(const std::string& root, const std::string& binName) const;

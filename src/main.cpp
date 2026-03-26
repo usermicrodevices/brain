@@ -8,7 +8,7 @@
 #include "Tools.hpp"
 #include "Compiler.hpp"
 #include "Serializer.hpp"
-#include "Reporter.hpp"
+#include "Report.hpp"
 #include "Benchmark.hpp"
 #include "Scheduler.hpp"
 #include "Core.hpp"
@@ -32,8 +32,9 @@ int main(int argc, char* argv[]) {
         if (std::string(argv[i]) == "--benchmark") {
             // Run the benchmark and exit – no recursion
             Core core;
-            std::cout << core.randomExpression() << "\n";
-            std::cout << "am child, goodby\n";
+            Metrics m = core.benchmark();
+            std::cout << "time:" << m.time_us << "\n";
+            std::cout << "mem:" << m.memory_kb << "\n";
             return 0;
         }
     }
@@ -75,12 +76,12 @@ int main(int argc, char* argv[]) {
 
     Compiler compiler;
     Serializer serializer(Metrics{0,0,false}, 0, tmpRoot);
-    Reporter reporter;
+    Report report;
     Benchmark benchmark(compiler, tmpRoot);
 
     std::string bestSource = ownSource;
     Metrics best = benchmark.run();
-    reporter.initialBest(best);
+    report.initialBest(best);
     serializer.updateBest(best, 0, ownHeader, bestSource);
 
     // ATTENTION: not delete this comment lines with examples and info
@@ -104,9 +105,9 @@ int main(int argc, char* argv[]) {
             best = m;
             bestSource = mutated;
             serializer.updateBest(best, generation, ownHeader, bestSource);
-            reporter.newBest(generation, best);
+            report.newBest(generation, best);
         } else {
-            reporter.candidate(generation, m, best);
+            report.candidate(generation, m, best);
         }
         ++generation;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
