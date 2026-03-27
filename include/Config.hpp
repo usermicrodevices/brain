@@ -12,51 +12,55 @@
 
 class Config {
 public:
-    // Construct with config file path (default: "config/core.json")
     explicit Config(const std::string& filePath = "config/core.json");
 
-    // Reload config from file
     bool reload();
-
-    // Save current config to file
     bool save() const;
 
-    // Check if a key exists (supports nested keys using dot notation, e.g., "deepseek.session_id")
     bool hasKey(const std::string& key) const;
 
-    // Get value as a specific type; throws if key not found or type mismatch
+    // Get value; returns default‑constructed T if missing or type mismatch
     template<typename T>
     T getKey(const std::string& key) const;
 
-    // Set value for a key (creates nested structure if needed)
+    // Get value with a user‑provided default
+    template<typename T>
+    T getKey(const std::string& key, const T& defaultValue) const;
+
     template<typename T>
     void setKey(const std::string& key, const T& value);
 
-    // Remove a key
     void removeKey(const std::string& key);
 
 private:
     std::string filePath_;
     nlohmann::json data_;
 
-    // Helper: ensure the directory of the config file exists
-    void ensureDirectoryExists() const;   // <-- added
-
-    // Helper: navigate to the nested JSON node using dot notation
+    void ensureDirectoryExists() const;
     nlohmann::json* getNode(const std::string& key, bool createIfMissing = false);
     const nlohmann::json* getNode(const std::string& key) const;
 };
 
-// Template implementations (usually placed in header)
+// Template implementations
 template<typename T>
 T Config::getKey(const std::string& key) const {
     const auto* node = getNode(key);
-    if (!node)
-        throw std::runtime_error("Config key not found: " + key);
+    if (!node) return T{};
     try {
         return node->get<T>();
-    } catch (const nlohmann::json::exception& e) {
-        throw std::runtime_error("Config key type mismatch: " + key + " - " + e.what());
+    } catch (const nlohmann::json::exception&) {
+        return T{};
+    }
+}
+
+template<typename T>
+T Config::getKey(const std::string& key, const T& defaultValue) const {
+    const auto* node = getNode(key);
+    if (!node) return defaultValue;
+    try {
+        return node->get<T>();
+    } catch (const nlohmann::json::exception&) {
+        return defaultValue;
     }
 }
 
@@ -64,5 +68,5 @@ template<typename T>
 void Config::setKey(const std::string& key, const T& value) {
     auto* node = getNode(key, true);
     *node = value;
-    save();  // persist after each set
+    save();
 }

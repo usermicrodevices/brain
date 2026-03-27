@@ -126,7 +126,7 @@ static bool compileProgram(const std::string& app_name, const std::string& root)
 
     setenv("TMPDIR", tmpDir.c_str(), 1);
     std::string errFile = tmpDir + app_name + ".err";
-    std::string cmd = "g++ -pipe -std=c++20 -O2 -I" + root + "include " + root + "src/*.cpp -o " + binFile + " 2> " + errFile;
+    std::string cmd = "g++ -pipe -std=c++20 -O2 -I" + root + "include -I" + root + "thirdparty " + root + "src/*.cpp -o " + binFile + " 2> " + errFile;
     std::cout << "\n" << cmd << "\n";
 
     pid_t pid = fork();

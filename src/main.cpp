@@ -127,12 +127,17 @@ int main(int argc, char* argv[]) {
     mkdir(tmpRoot.c_str(), 0755);
     mkdir((tmpRoot + "include").c_str(), 0755);
     mkdir((tmpRoot + "src").c_str(), 0755);
+    mkdir((tmpRoot + "thirdparty").c_str(), 0755);
     if(system(("cp -r include/* " + tmpRoot + "include/").c_str()) != 0) {
         std::cout << "Error copy 'include' to temp dir\n";
         return 1;
     }
     if(system(("cp -r src/* " + tmpRoot + "src/").c_str()) != 0) {
         std::cout << "Error copy 'src' to temp dir\n";
+        return 1;
+    }
+    if(system(("cp -r thirdparty/* " + tmpRoot + "thirdparty/").c_str()) != 0) {
+        std::cout << "Error copy 'thirdparty' to temp dir\n";
         return 1;
     }
 
@@ -153,7 +158,7 @@ int main(int argc, char* argv[]) {
     // Scheduler scheduler; // runs default "0 0 * * *" every midnight
     // for testing you can use run once
     // runs once after N minutes or edit as examples: "+5m", "+2h30m", "+90s"
-    // Scheduler scheduler("+1m");
+    // Scheduler scheduler(config.getKey<std::string>("scheduler.expression", "+1m");
 
     int generation = 0;
     while (!exit_requested) {

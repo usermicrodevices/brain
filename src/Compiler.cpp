@@ -8,7 +8,7 @@ bool Compiler::compile(const std::string& root, const std::string& binName) cons
 
     setenv("TMPDIR", root.c_str(), 1);
     std::string errFile = root + binName + ".err";
-    std::string cmd = "g++ -pipe -std=c++20 -O2 -I" + root + "/include " + root + "/src/*.cpp -o " + root + "/" + binFile + " 2> " + errFile;
+    std::string cmd = "g++ -pipe -std=c++20 -O2 -I" + root + "/include -I" + root + "/thirdparty " + root + "/src/*.cpp -o " + root + "/" + binFile + " 2> " + errFile;
 
     pid_t pid = fork();
     if (pid == -1) {
