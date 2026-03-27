@@ -16,6 +16,7 @@ public:
 
     bool newSession() override;
     void setSessionId(const std::string& id) override;
+    std::string getSessionId() const;
     std::string ask(const std::string& prompt) override;
 
     // Additional configuration

@@ -94,13 +94,11 @@ int main(int argc, char* argv[]) {
         llm->setThinkingEnabled(thinking);
         llm->setSearchEnabled(search);
         llm->setVerbose(false); // you can make this configurable if you like
-
         // Use existing session ID if present
         std::string sessionId = config.getKey<std::string>("llm.deepseek.session_id");
         if (!sessionId.empty()) {
             llm->setSessionId(sessionId);
-        } else {
-            // Create a new session and save its ID
+        } else { // Create a new session and save its ID
             if (llm->newSession()) {
                 std::string newId = llm->getSessionId(); // we need to add this getter
                 if (!newId.empty()) {

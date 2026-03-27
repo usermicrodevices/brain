@@ -43,29 +43,45 @@ void LLM::setTemperature(double temp) {
 }
 
 void LLM::setSessionId(const std::string& id) {
-    auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
-    if (deep) deep->setSessionId(id);
-    else throw std::runtime_error("setSessionId only available for DeepSeek");
+    if (driver_->getName() == "DeepSeek"){
+        auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
+        if (deep) deep->setSessionId(id);
+        else throw std::runtime_error("setSessionId dynamic_cast DeepSeek");
+    }
 }
 
 void LLM::setThinkingEnabled(bool enabled) {
-    auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
-    if (deep) deep->setThinkingEnabled(enabled);
-    else throw std::runtime_error("setThinkingEnabled only available for DeepSeek");
+    if (driver_->getName() == "DeepSeek"){
+        auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
+        if (deep) deep->setThinkingEnabled(enabled);
+        else throw std::runtime_error("setThinkingEnabled dynamic_cast DeepSeek");
+    }
 }
 
 void LLM::setSearchEnabled(bool enabled) {
-    auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
-    if (deep) deep->setSearchEnabled(enabled);
-    else throw std::runtime_error("setSearchEnabled only available for DeepSeek");
+    if (driver_->getName() == "DeepSeek"){
+        auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
+        if (deep) deep->setSearchEnabled(enabled);
+        else throw std::runtime_error("setSearchEnabled dynamic_cast DeepSeek");
+    }
 }
 
 void LLM::setVerbose(bool verbose) {
-    auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
-    if (deep) deep->setVerbose(verbose);
-    else throw std::runtime_error("setVerbose only available for DeepSeek");
+    if (driver_->getName() == "DeepSeek"){
+        auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
+        if (deep) deep->setVerbose(verbose);
+        else throw std::runtime_error("setVerbose dynamic_cast DeepSeek");
+    }
 }
 
 bool LLM::newSession() {
     return driver_->newSession();
+}
+
+std::string LLM::getSessionId() const {
+    if (driver_->getName() == "DeepSeek"){
+        auto* deep = dynamic_cast<DeepDriver*>(driver_.get());
+        if (deep) return deep->getSessionId();
+    }
+    return "";
 }

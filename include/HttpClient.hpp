@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <random>
 #include <string>

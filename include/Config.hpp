@@ -39,6 +39,9 @@ private:
     std::string filePath_;
     nlohmann::json data_;
 
+    // Helper: ensure the directory of the config file exists
+    void ensureDirectoryExists() const;   // <-- added
+
     // Helper: navigate to the nested JSON node using dot notation
     nlohmann::json* getNode(const std::string& key, bool createIfMissing = false);
     const nlohmann::json* getNode(const std::string& key) const;

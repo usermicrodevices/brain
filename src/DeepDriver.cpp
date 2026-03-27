@@ -3,7 +3,10 @@
 using json = nlohmann::json;
 
 DeepDriver::DeepDriver(HttpClient& http)
-    : http_(http), sessionId_(""), lastMessageId_(0), thinkingEnabled_(true), searchEnabled_(true), verbose_(false) {}
+    : http_(http), sessionId_(""), lastMessageId_(0), thinkingEnabled_(true), searchEnabled_(true), verbose_(false)
+    {
+        setName("DeepSeek");
+    }
 
 bool DeepDriver::newSession() {
     return fetchNewSession();
@@ -12,6 +15,10 @@ bool DeepDriver::newSession() {
 void DeepDriver::setSessionId(const std::string& id) {
     sessionId_ = id;
     lastMessageId_ = 0;
+}
+
+std::string DeepDriver::getSessionId() const {
+    return sessionId_;
 }
 
 void DeepDriver::setThinkingEnabled(bool enabled) { thinkingEnabled_ = enabled; }

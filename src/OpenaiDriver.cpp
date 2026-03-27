@@ -3,7 +3,10 @@
 using json = nlohmann::json;
 
 OpenaiDriver::OpenaiDriver(HttpClient& http)
-    : http_(http), apiKey_(""), model_("gpt-3.5-turbo"), maxTokens_(500), temperature_(0.7) {}
+    : http_(http), apiKey_(""), model_("gpt-3.5-turbo"), maxTokens_(500), temperature_(0.7)
+    {
+        setName("OpenAI");
+    }
 
 void OpenaiDriver::setApiKey(const std::string& key) { apiKey_ = key; }
 void OpenaiDriver::setModel(const std::string& model) { model_ = model; }

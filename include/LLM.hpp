@@ -32,6 +32,7 @@ public:
 
     // Generic session management
     bool newSession();
+    std::string getSessionId() const;
 
 private:
     std::unique_ptr<LLMClient> driver_;
