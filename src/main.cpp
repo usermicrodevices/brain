@@ -12,6 +12,8 @@
 #include "Benchmark.hpp"
 #include "Scheduler.hpp"
 #include "Core.hpp"
+#include "Config.hpp"
+#include "LLM.hpp"
 
 volatile std::sig_atomic_t exit_requested = 0;
 extern pid_t g_child_pid;
@@ -25,12 +27,36 @@ void signal_handler(int sig) {
     }
 }
 
+// Helper: extract C++ code from an LLM response (remove markdown fences)
+std::string extractCode(const std::string& response) {
+    // Look for ```cpp ... ``` or just ``` ... ```
+    std::string code = response;
+    size_t start = code.find("```cpp");
+    if (start == std::string::npos) start = code.find("```");
+    if (start != std::string::npos) {
+        start += 3; // skip ```
+        // skip optional "cpp"
+        if (code.substr(start, 3) == "cpp") start += 3;
+        // skip whitespace
+        while (start < code.size() && (code[start] == '\n' || code[start] == '\r'))
+            ++start;
+        size_t end = code.find("```", start);
+        if (end != std::string::npos) {
+            code = code.substr(start, end - start);
+            // trim trailing whitespace
+            while (!code.empty() && (code.back() == '\n' || code.back() == '\r' || code.back() == ' '))
+                code.pop_back();
+        }
+    }
+    // If no fences, assume whole response is the code
+    return code;
+}
+
 int main(int argc, char* argv[]) {
 
     // Check if we are being run as a benchmark child
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "--benchmark") {
-            // Run the benchmark and exit – no recursion
             Core core;
             Metrics m = core.benchmark();
             std::cout << "time:" << m.time_us << "\n";
@@ -39,6 +65,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // --- Setup signal handling ---
     struct sigaction sa;
     sa.sa_handler = signal_handler;
     sigemptyset(&sa.sa_mask);
@@ -53,25 +80,67 @@ int main(int argc, char* argv[]) {
     std::cout << "Fitness = time(µs) * memory(KB) (lower is better).\n";
     std::cout << "Press Ctrl+C to save the best evolved brain.\n\n";
 
+    // --- Load configuration ---
+    Config config("config/core.json");
+    std::string provider = config.getKey<std::string>("llm.provider");
+    std::unique_ptr<LLM> llm;
+    bool useAI = false;
+
+    if (provider == "DeepSeek") {
+        useAI = true;
+        llm = std::make_unique<LLM>("DeepSeek");
+        bool thinking = config.getKey<bool>("llm.deepseek.thinking_enabled");
+        bool search = config.getKey<bool>("llm.deepseek.search_enabled");
+        llm->setThinkingEnabled(thinking);
+        llm->setSearchEnabled(search);
+        llm->setVerbose(false); // you can make this configurable if you like
+        // Use existing session ID if present
+        std::string sessionId = config.getKey<std::string>("llm.deepseek.session_id");
+        if (!sessionId.empty()) {
+            llm->setSessionId(sessionId);
+        } else { // Create a new session and save its ID
+            if (llm->newSession()) {
+                std::string newId = llm->getSessionId(); // we need to add this getter
+                if (!newId.empty()) {
+                    config.setKey("llm.deepseek.session_id", newId);
+                    config.save(); // persist immediately
+                }
+            }
+        }
+    } else if (provider == "OpenAI") {
+        useAI = true;
+        llm = std::make_unique<LLM>("OpenAI");
+        std::string apiKey = config.getKey<std::string>("llm.openai.api_key");
+        if (!apiKey.empty()) llm->setApiKey(apiKey);
+        std::string model = config.getKey<std::string>("llm.openai.model");
+        llm->setModel(model);
+        int maxTokens = config.getKey<int>("llm.openai.max_tokens");
+        llm->setMaxTokens(maxTokens);
+        double temp = config.getKey<double>("llm.openai.temperature");
+        llm->setTemperature(temp);
+    } else {
+        std::cout << "No valid LLM provider configured. Using local mutation only.\n";
+    }
+
+    // --- Setup temporary work directory ---
     std::string tmpRoot = getTempDir() + "brain_work/";
-    // Create a temporary working directory in /dev/shm
     mkdir(tmpRoot.c_str(), 0755);
-    // Create include and src subdirectories
     mkdir((tmpRoot + "include").c_str(), 0755);
     mkdir((tmpRoot + "src").c_str(), 0755);
-    // Copy only the include/ and src/ directories (headers and source files)
-    if(system(("cp -r include/* " + tmpRoot + "include/").c_str()) != 0)
-    {
+    mkdir((tmpRoot + "thirdparty").c_str(), 0755);
+    if(system(("cp -r include/* " + tmpRoot + "include/").c_str()) != 0) {
         std::cout << "Error copy 'include' to temp dir\n";
         return 1;
     }
-    if(system(("cp -r src/* " + tmpRoot + "src/").c_str()) != 0)
-    {
+    if(system(("cp -r src/* " + tmpRoot + "src/").c_str()) != 0) {
         std::cout << "Error copy 'src' to temp dir\n";
         return 1;
     }
+    if(system(("cp -r thirdparty/* " + tmpRoot + "thirdparty/").c_str()) != 0) {
+        std::cout << "Error copy 'thirdparty' to temp dir\n";
+        return 1;
+    }
 
-    // Now all operations will use tmpRoot as the base
     auto [ownHeader, ownSource] = readSources(tmpRoot);
 
     Compiler compiler;
@@ -89,12 +158,35 @@ int main(int argc, char* argv[]) {
     // Scheduler scheduler; // runs default "0 0 * * *" every midnight
     // for testing you can use run once
     // runs once after N minutes or edit as examples: "+5m", "+2h30m", "+90s"
-    // Scheduler scheduler("+1m");
+    // Scheduler scheduler(config.getKey<std::string>("scheduler.expression", "+1m");
 
     int generation = 0;
     while (!exit_requested) {
         if (exit_requested) break;
-        std::string mutated = mutate(bestSource);
+
+        std::string mutated;
+        if (useAI) {
+            // Build a prompt that includes the current source and fitness
+            std::string prompt = "You are a C++ optimizer. The current Core.hpp is:\n```cpp\n" +
+                                 bestSource + "\n```\n" +
+                                 "Fitness (time*memory) is " + std::to_string(best.fitness()) +
+                                 ". Suggest an improvement by modifying the parameters of distNumStmts and distConst. "
+                                 "Return only the full new Core.hpp code inside a code block.";
+            std::string response = llm->ask(prompt);
+            if (!response.empty()) {
+                mutated = extractCode(response);
+                // If we got nothing after extraction, fall back to local
+                if (mutated.empty()) {
+                    std::cerr << "AI returned empty code, falling back to local mutation.\n";
+                    mutated = mutate(bestSource);
+                }
+            } else {
+                std::cerr << "AI call failed, falling back to local mutation.\n";
+                mutated = mutate(bestSource);
+            }
+        } else {
+            mutated = mutate(bestSource);
+        }
         if (exit_requested) break;
 
         g_child_pid = 0;
