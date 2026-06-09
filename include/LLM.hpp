@@ -4,35 +4,38 @@
 #include <stdexcept>
 #include <string>
 
-#include "DeepDriver.hpp"
+#include "OpenCodeDriver.hpp"
 #include "OpenaiDriver.hpp"
 #include "HttpClient.hpp"
 #include "LLMClient.hpp"
 
 class LLM {
 public:
-    // Provider names: "DeepSeek", "OpenAI"
+    // Provider names: "OpenCode", "OpenAI"
     LLM(const std::string& provider);
     ~LLM();
 
     // Send a prompt and return the answer
     std::string ask(const std::string& prompt);
 
-    // Configuration methods (forwarded to the underlying driver)
-    void setApiKey(const std::string& key);          // for OpenAI
-    void setModel(const std::string& model);         // for OpenAI
-    void setMaxTokens(int tokens);                   // for OpenAI
-    void setTemperature(double temp);                // for OpenAI
+    // OpenAI configuration
+    void setApiKey(const std::string& key);
+    void setModel(const std::string& model);
+    void setMaxTokens(int tokens);
+    void setTemperature(double temp);
 
-    // DeepSeek specific
-    void setSessionId(const std::string& id);
-    void setThinkingEnabled(bool enabled);
-    void setSearchEnabled(bool enabled);
-    void setVerbose(bool verbose);
+    // OpenCode configuration
+    void setUrl(const std::string& url);
+    void setUsername(const std::string& user);
+    void setPassword(const std::string& pass);
+    void setAgent(const std::string& agent);
+    void setThinkingEffort(const std::string& effort);
+    void setWorkingDirectory(const std::string& dir);
 
     // Generic session management
     bool newSession();
     std::string getSessionId() const;
+    void setSessionId(const std::string& id);
 
 private:
     std::unique_ptr<LLMClient> driver_;

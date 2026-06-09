@@ -1,24 +1,21 @@
 #include "Config.hpp"
 
-// Helper to create a directory if it doesn't exist
 static bool createDirectory(const std::string& path) {
     struct stat st;
     if (stat(path.c_str(), &st) == 0) {
         if (S_ISDIR(st.st_mode))
-            return true; // already exists
-            else
-                return false; // exists but is not a directory
+            return true;
+        else
+            return false;
     }
-    // Create with 0755 permissions
     return mkdir(path.c_str(), 0755) == 0;
 }
 
 void Config::ensureDirectoryExists() const {
-    // Extract directory part from filePath_
     size_t lastSlash = filePath_.find_last_of('/');
     if (lastSlash == std::string::npos)
-        return; // no directory, assume current
-        std::string dir = filePath_.substr(0, lastSlash);
+        return;
+    std::string dir = filePath_.substr(0, lastSlash);
     if (dir.empty())
         return;
     if (!createDirectory(dir)) {
@@ -29,23 +26,29 @@ void Config::ensureDirectoryExists() const {
 Config::Config(const std::string& filePath) : filePath_(filePath) {
     ensureDirectoryExists();
 
-    // Check if file exists; if not, create it with default content
     std::ifstream test(filePath_);
     if (!test.is_open()) {
-        // File doesn't exist, create it with default JSON
         data_ = nlohmann::json::object();
-        // Populate with default values (you can customize)
-        data_["llm"]["provider"] = "DeepSeek";
-        data_["llm"]["deepseek"]["session_id"] = "";
-        data_["llm"]["deepseek"]["thinking_enabled"] = true;
-        data_["llm"]["deepseek"]["search_enabled"] = true;
+        data_["llm"]["provider"] = "OpenCode";
+        data_["llm"]["opencode"]["url"] = "http://127.0.0.1:4096";
+        data_["llm"]["opencode"]["username"] = "opencode";
+        data_["llm"]["opencode"]["password"] = "";
+        data_["llm"]["opencode"]["model"] = "";
+        data_["llm"]["opencode"]["agent"] = "build";
+        data_["llm"]["opencode"]["thinking_effort"] = "";
+        data_["llm"]["opencode"]["working_directory"] = ".";
         data_["llm"]["openai"]["api_key"] = "";
         data_["llm"]["openai"]["model"] = "gpt-3.5-turbo";
         data_["llm"]["openai"]["max_tokens"] = 500;
         data_["llm"]["openai"]["temperature"] = 0.7;
+        data_["evolution"]["num_workers"] = 4;
+        data_["evolution"]["max_retries"] = 5;
         data_["evolution"]["max_generations"] = 1000;
         data_["evolution"]["sleep_ms"] = 100;
-        save(); // Write default config
+        data_["global_stop"]["listen_port"] = 9999;
+        data_["global_stop"]["enabled"] = true;
+        data_["scheduler"]["expression"] = "0 0 * * *";
+        save();
     } else {
         test.close();
         reload();
@@ -55,7 +58,6 @@ Config::Config(const std::string& filePath) : filePath_(filePath) {
 bool Config::reload() {
     std::ifstream file(filePath_);
     if (!file.is_open()) {
-        // If file doesn't exist, create an empty JSON object
         data_ = nlohmann::json::object();
         return true;
     }
@@ -75,7 +77,7 @@ bool Config::save() const {
         std::cerr << "[Config] Failed to write " << filePath_ << std::endl;
         return false;
     }
-    file << data_.dump(4);  // pretty print with 4 spaces
+    file << data_.dump(4);
     return true;
 }
 
@@ -91,14 +93,12 @@ void Config::removeKey(const std::string& key) {
     while (std::getline(ss, part, '.'))
         parts.push_back(part);
 
-    // Navigate to the parent node
     nlohmann::json* current = &data_;
     for (size_t i = 0; i < parts.size() - 1; ++i) {
         if (!current->is_object() || !current->contains(parts[i]))
-            return;  // path doesn't exist
+            return;
         current = &(*current)[parts[i]];
     }
-    // Remove the last part
     if (current->is_object() && current->contains(parts.back()))
         current->erase(parts.back());
     save();

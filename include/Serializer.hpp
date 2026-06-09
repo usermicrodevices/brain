@@ -1,10 +1,8 @@
 #pragma once
 
-#include <csignal>
-#include <cstdlib>
-#include <cstring>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 #include <sys/stat.h>
 
@@ -16,15 +14,11 @@ public:
     Serializer(const Metrics& initialBest, int generation = 0, const std::string& tmpRoot = "");
     ~Serializer();
 
-    void updateBest(const Metrics& metrics, int generation, const std::string& header, const std::string& source);
+    void updateBest(const Metrics& metrics, int generation, const std::map<std::string, std::string>& sources);
     void saveBest() const;
 
 private:
     Metrics best_;
     int bestGen_;
     std::string tmpRoot_;
-    static Serializer* instance_;
-
-    static void signal_handler(int);
-    static void installSignalHandler();
 };
